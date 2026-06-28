@@ -1,0 +1,2 @@
+"""Badge-related components."""
+

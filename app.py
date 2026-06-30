@@ -27,6 +27,9 @@ import pytz
 import os
 API_BASE = st.secrets.get("API_BASE", os.environ.get("API_BASE", "http://localhost:8002"))
 
+# DEBUG: Remove this line after debugging
+st.write(f"DEBUG: API_BASE = {API_BASE}")
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Session State Defaults
 # ─────────────────────────────────────────────────────────────────────────────

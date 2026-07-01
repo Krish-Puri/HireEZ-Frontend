@@ -27,9 +27,6 @@ import pytz
 import os
 API_BASE = st.secrets.get("API_BASE", os.environ.get("API_BASE", "http://localhost:8002"))
 
-# DEBUG: Remove this line after debugging
-st.write(f"DEBUG: API_BASE = {API_BASE}")
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Session State Defaults
 # ─────────────────────────────────────────────────────────────────────────────
@@ -232,13 +229,19 @@ def get_shortlisted_after_test(min_total=50.0):
         return []
 
 def send_test_links(threshold: float = 50.0):
-    return requests.post(f"{API_BASE}/tests/send-test-links", params={"threshold": threshold}, timeout=60).json()
+    return requests.post(f"{API_BASE}/tests/send-test-links", params={"threshold": threshold}, timeout=300).json()
+
+def rerun_github():
+    return requests.post(f"{API_BASE}/candidates/rerun-github", timeout=60).json()
+
+def rerun_ai():
+    return requests.post(f"{API_BASE}/candidates/rerun-ai", timeout=60).json()
 
 def rank_all():
     return requests.post(f"{API_BASE}/candidates/rank-all", timeout=60).json()
 
 def schedule_interviews(**kwargs):
-    return requests.post(f"{API_BASE}/interviews/schedule", params=kwargs, timeout=60).json()
+    return requests.post(f"{API_BASE}/interviews/schedule", params=kwargs, timeout=300).json()
 
 def create_job(payload):
     return requests.post(f"{API_BASE}/jobs/", json=payload, timeout=10)
@@ -575,6 +578,14 @@ elif page == "🤖  AI Evaluation":
 
         if not pending.empty:
             st.warning(f"⏳  {len(pending)} candidate(s) still pending AI evaluation.")
+            if st.button("🔄  Re-run AI Evaluation", type="secondary"):
+                with st.spinner("Re-running AI evaluation in background..."):
+                    result = rerun_ai()
+                if result.get("success"):
+                    st.success(f"✅  {result['message']}")
+                    st.rerun()
+                else:
+                    st.error(f"❌  Error: {result}")
 
         st.markdown("---")
         st.info("✅  Move to **GitHub Analysis** next.")
@@ -623,11 +634,22 @@ elif page == "💻  GitHub Analysis":
         st.markdown("**🏆 Top GitHub Scores**")
         top_gh = df.dropna(subset=["github_score"]).sort_values("github_score", ascending=False).head(15)
         if not top_gh.empty:
-            cols = ["id","name","github_url","github_score","top_languages","best_ai_project"]
+            cols = ["id","name","github_url","github_score","top_languages"]
             avail = [c for c in cols if c in top_gh.columns]
             disp = top_gh[avail].copy()
-            disp.columns = ["ID","Name","GitHub","GitHub Score","Top Languages","Best Project"]
+            disp.columns = ["ID","Name","GitHub","GitHub Score","Top Languages"]
             st.dataframe(disp, width="stretch", hide_index=True)
+
+        if not pending.empty:
+            st.warning(f"⏳  {len(pending)} candidate(s) still pending GitHub analysis.")
+            if st.button("🔄  Re-run GitHub Analysis", type="secondary"):
+                with st.spinner("Re-running GitHub analysis in background..."):
+                    result = rerun_github()
+                if result.get("success"):
+                    st.success(f"✅  {result['message']}")
+                    st.rerun()
+                else:
+                    st.error(f"❌  Error: {result}")
 
         st.markdown("---")
         st.info("✅  Move to **Score & Rank** to compute combined rankings.")
